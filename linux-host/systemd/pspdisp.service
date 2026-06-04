@@ -1,0 +1,37 @@
+# PSPdisp host as a systemd user service — clean start/stop/restart, single
+# instance, no kill -9 ever (systemd stops it with SIGTERM so libusb releases
+# the device cleanly).
+#
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   cp pspdisp.service ~/.config/systemd/user/
+#   echo 'OPTS=-t usb -q 65 -f 60' > ~/.config/pspdisp.conf   # edit to taste
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now pspdisp
+#
+# Control:
+#   systemctl --user start|stop|restart|status pspdisp
+#   journalctl --user -u pspdisp -f
+#
+# USB needs the udev rule (make install) so your seat user can claim the PSP
+# without root. For the -i gamepad, the same rule grants /dev/uinput.
+
+[Unit]
+Description=PSPdisp host (use a PSP as a Linux display)
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+# Override options in ~/.config/pspdisp.conf (OPTS=...). Default: USB, mirror.
+Environment=OPTS=-t usb -q 65 -f 60
+EnvironmentFile=-%h/.config/pspdisp.conf
+ExecStart=/usr/local/bin/pspdisp $OPTS
+Restart=on-failure
+RestartSec=2
+# stop cleanly so libusb releases the interface; never escalate too fast
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,20 @@
+# Linux host build output
+linux-host/pspdisp
+linux-host/gen/
+linux-host/psp-payload/
+*.o
+
+# PSP homebrew build output
+psp/source/**/*.o
+psp/source/EBOOT.PBP
+psp/source/PARAM.SFO
+psp/source/*.elf
+psp/source/**/*.prx
+psp/source/PSPDISP.CFG
+
+# misc
+*.log
+*.tmp
+
+# internal notes, not published
+PORT.md

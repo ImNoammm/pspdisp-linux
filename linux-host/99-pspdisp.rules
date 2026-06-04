@@ -1,0 +1,8 @@
+# PSPdisp: let the local user talk to the PSP over USB and use uinput.
+# PSP in usbhostfs mode: Sony VID 054c, PID 01c9 (type B) / 01ca (type C).
+# uaccess covers the active seat; plugdev is a reliable fallback.
+SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="01c9", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="054c", ATTR{idProduct}=="01ca", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+
+# Virtual gamepad injection (-i flag).
+KERNEL=="uinput", MODE="0660", GROUP="input", TAG+="uaccess", OPTIONS+="static_node=uinput"

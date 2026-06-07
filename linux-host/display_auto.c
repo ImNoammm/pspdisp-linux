@@ -96,18 +96,21 @@ const char *display_auto_create(int w, int h)
        output; `--setmonitor` makes the WM treat it as a real head. We print
        "xoff curW curH" so the caller sets the capture region and we can restore
        the framebuffer on exit. Falls back (exit 1) if the screen can't grow
-       (Virtual too small) — caller then mirrors instead. */
+       (Virtual too small) — caller then mirrors instead.
+       NOTE: every side-effect xrandr must suppress BOTH stdout and stderr
+       (`--delmonitor` prints "No monitor named ..." to stdout), so the only
+       thing on stdout is the final printf the caller parses. */
     snprintf(cmd, sizeof cmd,
       "cur=$(xrandr 2>/dev/null | awk '/^Screen 0/{w=$8;h=$10;sub(/,/,\"\",w);sub(/,/,\"\",h);print w\" \"h}');"
       "set -- $cur; cw=$1; ch=$2;"
       "[ -z \"$cw\" ] && exit 1;"
       "xoff=$cw; nw=$((cw + %d)); nh=$ch; [ %d -gt $nh ] && nh=%d;"
-      "xrandr --fb ${nw}x${nh} 2>/dev/null || exit 1;"
+      "xrandr --fb ${nw}x${nh} >/dev/null 2>&1 || exit 1;"
       "gw=$(xrandr 2>/dev/null | awk '/^Screen 0/{w=$8;sub(/,/,\"\",w);print w}');"
-      "if [ \"${gw:-0}\" -lt \"$nw\" ] 2>/dev/null; then xrandr --fb ${cw}x${ch} 2>/dev/null; exit 1; fi;"
-      "xrandr --delmonitor PSP-1 2>/dev/null;"
-      "xrandr --setmonitor PSP-1 %d/100x%d/60+${xoff}+0 none 2>/dev/null"
-      "  || { xrandr --fb ${cw}x${ch} 2>/dev/null; exit 1; };"
+      "if [ \"${gw:-0}\" -lt \"$nw\" ] 2>/dev/null; then xrandr --fb ${cw}x${ch} >/dev/null 2>&1; exit 1; fi;"
+      "xrandr --delmonitor PSP-1 >/dev/null 2>&1;"
+      "xrandr --setmonitor PSP-1 %d/100x%d/60+${xoff}+0 none >/dev/null 2>&1"
+      "  || { xrandr --fb ${cw}x${ch} >/dev/null 2>&1; exit 1; };"
       "printf '%%s %%s %%s' \"$xoff\" \"$cw\" \"$ch\"",
       w, h, h, w, h);
   }

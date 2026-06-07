@@ -15,18 +15,21 @@ homebrew talks to either host.
 
 ## ⚠️ Disclaimer — what's tested
 
-This was developed and verified on **one setup**: a PSP Slim + **sway/Wayland**
-on an **NVIDIA** PC. Treat anything outside that as "should work, not proven."
+Verified on real hardware on **two setups**: a PSP Slim over **sway/Wayland**
+(NVIDIA PC) and over **X11** (a Steam Deck / AMD, `startx`). Treat anything
+outside those as "should work, not proven."
 
 | Feature | Status |
 |---|---|
 | USB transport, Wi‑Fi (TCP) transport | ✅ verified on hardware |
 | Capture on **sway / wlroots** (wlr‑screencopy) | ✅ verified |
-| Capture on **X11** (XShm) | ✅ verified |
+| Capture on **X11** (XShm) — **mirror and second screen** | ✅ **verified on hardware** (Steam Deck / amdgpu) |
+| **X11 auto second display** (framebuffer strip) | ✅ **verified on hardware** — bare `pspdisp` creates it and removes it on exit |
+| **X11 mirror by name** (`-o NAME`) and by region (`-x/-y/-w/-h`) | ✅ verified |
 | Auto virtual display (sway) | ✅ verified |
 | Gamepad (uinput), rotation, dirty‑skip | ✅ verified |
+| Run detached (`--background` / `-D`) + `--kill` | ✅ verified |
 | Auto virtual display on **Hyprland** | ⚠️ written, **not tested** (no Hyprland here) |
-| Auto virtual display on **X11** (VirtualHeads) | ⚠️ written, **not tested** (dev box is Wayland) |
 | **KDE/GNOME Wayland** capture (PipeWire portal, `-b portal`) | ⚠️ **experimental** — full pipeline runs, but DMA‑BUF readback is unverified on Mesa and **garbles on NVIDIA** (driver limitation). See the [compositor table](#compositor-support). |
 | Audio (`-a`) | ⚠️ best‑effort, A/V sync **not validated** |
 
@@ -61,18 +64,31 @@ Then on the PSP: launch **PSPdisp** from the Game menu → pick **USB** or **WLA
 pspdisp               # USB; new display on sway/Hyprland/X11, mirror on KDE/GNOME
 pspdisp -i            # also expose PSP buttons + stick as a uinput gamepad
 pspdisp --no-display  # mirror an existing screen instead of a new one
-pspdisp -o HDMI-A-1   # mirror one specific output
+pspdisp -o HDMI-A-1   # mirror one specific monitor by name (Wayland and X11)
+pspdisp --no-display -x 1920 -y 0 -w 2560 -h 1440  # mirror a specific region (X11)
 pspdisp -t tcp        # Wi‑Fi: PSP connects to this PC (port 17584)
+pspdisp --background  # run detached (logs to $XDG_RUNTIME_DIR/pspdisp.log)
 pspdisp --kill        # stop a running host cleanly
 pspdisp --help        # all options, grouped, with examples
 ```
+
+> **Picking a monitor when you have several:** `-o NAME` mirrors that monitor —
+> names come from `xrandr | grep ' connected'` (X11) or `swaymsg -t get_outputs`
+> / `wlr-randr` (Wayland). On X11, `-o` looks up the monitor's geometry for you;
+> or give an explicit rectangle with `-x/-y/-w/-h` (use the monitor's `WxH+X+Y`
+> from `xrandr`). Drop `--no-display` to make a *new* extra screen instead.
 
 > **Where you get a real new display vs. a mirror:**
 > - **sway / Hyprland** — dedicated virtual monitor, created automatically and
 >   removed on exit. No flag, no setup.
 > - **X11** (any desktop, incl. KDE/GNOME on X11) — same, after a one‑time setup
->   the installer offers (a VirtualHeads snippet + one X restart). Then plain
->   `pspdisp` makes the new display itself.
+>   the installer offers (it enlarges the X framebuffer via a `Virtual` xorg
+>   snippet — **reusing your existing GPU driver, no driver swap** — then one X
+>   restart). Plain `pspdisp` grows the framebuffer, carves the off‑screen strip
+>   into a monitor (`xrandr --setmonitor`), captures it, and tears it down on
+>   exit. This is **driver‑agnostic** (works on AMD / Intel / NVIDIA — it does
+>   not need the `VirtualHeads` option, which amdgpu and the NVIDIA DDX lack).
+>   Confirmed on hardware (Steam Deck / amdgpu): both mirror and second screen.
 > - **KDE / GNOME on Wayland** — mirror only; there's no portable way to make a
 >   virtual output there yet.
 >
@@ -87,7 +103,7 @@ See [`linux-host/README.md`](linux-host/README.md) for all options.
 | **sway / Hyprland** (wlroots) | ✅ wlr‑screencopy | ✅ **automatic** — created on start, removed on stop |
 | **KDE / GNOME** (Wayland) | ⚠️ PipeWire portal — **experimental**¹ | ⚠️ mirror only (no portable virtual‑output API) |
 | Other wlroots (river/Wayfire/labwc) | ✅ wlr‑screencopy | use `swaymsg`/manual or mirror |
-| **X11** (any desktop) | ✅ XShm | ✅ automatic after a one‑time VirtualHeads setup (installer offers it) |
+| **X11** (any desktop) | ✅ XShm (verified, Steam Deck/amdgpu) | ✅ automatic after a one‑time framebuffer‑headroom setup (installer offers it; driver‑agnostic) |
 
 ¹ The PipeWire‑portal backend (`-b portal`) does the full xdg‑desktop‑portal
 handshake and reads frames over PipeWire, including **DMA‑BUF** (negotiated with
@@ -109,24 +125,37 @@ swaymsg 'move window to output HEADLESS-1'   # (sway) send a window to it
 ```
 
 This is automatic on **sway and Hyprland**. On **X11** it also just works after
-a one-time setup: the installer writes a `modesetting` `VirtualHeads` snippet (or
-do it yourself — see below) and you restart X once; from then on `pspdisp` enables
-the virtual output, captures it, and turns it off on exit, no flags needed.
+a one-time setup: the installer enlarges the X framebuffer with a `Virtual` xorg
+snippet (or do it yourself — see below) and you restart X once. From then on
+`pspdisp` grows the framebuffer, carves the off-screen strip into a monitor with
+`xrandr --setmonitor`, captures it, and tears it down on exit — no flags needed.
+**Confirmed on hardware** (Steam Deck / amdgpu): mirror and second screen.
+
+This method is **driver-agnostic** — unlike the old `VirtualHeads` approach it
+works on AMD, Intel and NVIDIA, since it needs no DDX-specific virtual-output
+support. The installer **reuses your existing GPU `Device`**, so it does not
+swap drivers and your display tweaks (overscan, scaling, TearFree) are untouched.
 
 <details><summary>Manual X11 setup (if you skipped the installer prompt)</summary>
 
+Add a `Screen` with extra `Virtual` headroom that references your existing GPU
+`Device` (find its `Identifier` in your current xorg config; e.g. `"AMD"`):
+
 ```bash
 sudo tee /etc/X11/xorg.conf.d/20-pspdisp-virtual.conf >/dev/null <<'EOF'
-Section "Device"
-    Identifier "PSPdisp modesetting"
-    Driver     "modesetting"
-    Option     "VirtualHeads" "1"
+Section "Screen"
+    Identifier "PSPdisp Screen"
+    Device     "AMD"          # <- your existing Device Identifier
+    SubSection "Display"
+        Virtual 5120 2160
+    EndSubSection
 EndSection
 EOF
 # log out and back in (restart X), then just run: pspdisp
 ```
-(`evdi` — the hot-pluggable kernel virtual display, `evdi-dkms` — is the other
-option, but pspdisp doesn't drive it directly yet.)
+If you have no explicit `Device` section, create one with your in-use driver
+(`amdgpu` / `nvidia` / `modesetting` / `intel`) plus the `Screen` above — that is
+exactly what the installer does automatically.
 </details>
 
 Use `--no-display` to mirror an existing screen instead, or `-o NAME` to capture

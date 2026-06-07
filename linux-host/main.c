@@ -37,6 +37,30 @@ static bool acquire_lock(void)
   return true;
 }
 
+/* Detach into the background: fork, the child keeps the lock + runs, the parent
+   prints how to stop it and exits. Child's stdout/stderr go to a log so output
+   isn't lost. Called after acquire_lock(), so the child inherits the held lock. */
+static void daemonize(void)
+{
+  fflush(stdout);
+  pid_t pid = fork();
+  if (pid < 0) { perror("fork"); exit(1); }
+  if (pid > 0) {
+    printf("pspdisp is now running in the background (pid %d).\n"
+           "Stop it with:  pspdisp --kill\n", pid);
+    fflush(stdout);
+    _exit(0);                       /* parent leaves; child holds the lock */
+  }
+  setsid();                         /* detach from the controlling terminal */
+  const char *rt = getenv("XDG_RUNTIME_DIR");
+  char lp[256];
+  snprintf(lp, sizeof lp, "%s/pspdisp.log", rt && *rt ? rt : "/tmp");
+  int fd = open(lp, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (fd >= 0) { dup2(fd, STDOUT_FILENO); dup2(fd, STDERR_FILENO); if (fd > 2) close(fd); }
+  int z = open("/dev/null", O_RDONLY);
+  if (z >= 0) { dup2(z, STDIN_FILENO); if (z > 2) close(z); }
+}
+
 static transport_backend *tp;
 static capture_backend   *cap;
 
@@ -167,6 +191,7 @@ static void usage(const char *p)
    "  -i                expose PSP buttons as a uinput gamepad\n"
    "  -a                stream PC audio to the PSP (experimental)\n"
    "  -v                verbose (show fps / button data)\n"
+   "  --background, -D  run detached (logs to $XDG_RUNTIME_DIR/pspdisp.log)\n"
    "  --help, -H        show this help\n"
    "  --kill            stop a running pspdisp cleanly\n"
    "\n"
@@ -203,9 +228,11 @@ int main(int argc, char **argv)
 
   /* getopt() doesn't handle long options. Handle the long ones here, then
      compact argv so getopt only sees short options. */
+  bool background = false;
   int w = 1;
   for (int a = 1; a < argc; a++) {
     if (!strcmp(argv[a], "--help")) { usage(argv[0]); return 0; }
+    if (!strcmp(argv[a], "--background") || !strcmp(argv[a], "--daemon")) { background = true; continue; }
     if (!strcmp(argv[a], "--kill") || !strcmp(argv[a], "--stop")) {
       /* Stop our own running host(s) cleanly: SIGTERM, never kill -9 (that
          wedges the USB device). Restrict to this user's processes so we don't
@@ -220,7 +247,7 @@ int main(int argc, char **argv)
   argc = w;
 
   int c;
-  while ((c = getopt(argc, argv, "t:b:o:x:y:w:h:r:q:f:P:k:iavH")) != -1) {
+  while ((c = getopt(argc, argv, "t:b:o:x:y:w:h:r:q:f:P:k:iavHD")) != -1) {
     switch (c) {
       case 't': g_opt.transport = strcmp(optarg, "tcp") ? TRANSPORT_USB : TRANSPORT_TCP; break;
       case 'b':
@@ -241,6 +268,7 @@ int main(int argc, char **argv)
       case 'i': g_opt.input = true; break;
       case 'a': g_opt.audio = true; break;
       case 'v': g_opt.verbose = true; break;
+      case 'D': background = true; break;
       case 'H': usage(argv[0]); return 0;
       default:  usage(argv[0]); return 1;
     }
@@ -250,6 +278,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "bad rotation\n"); return 1; }
 
   if (!acquire_lock()) return 1;     /* refuse a second, device-fighting instance */
+  if (background) daemonize();       /* detach; parent prints how to --kill it */
 
   /* Install handlers WITHOUT SA_RESTART so SIGTERM/SIGINT interrupt blocking
      syscalls (accept, recv, usb transfers) with EINTR — the loops then see

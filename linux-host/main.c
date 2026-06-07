@@ -153,9 +153,10 @@ static void usage(const char *p)
    "What to show on the PSP:\n"
    "  (default on sway/Hyprland: create a NEW virtual screen, removed when pspdisp stops)\n"
    "  --no-display      mirror an existing screen instead of a new one\n"
-   "  -o NAME           capture this existing output, e.g. HDMI-A-1\n"
+   "  -o NAME           mirror this monitor by name, e.g. HDMI-A-1 / DisplayPort-0\n"
+   "                    (Wayland: by name; X11: looks up its xrandr geometry)\n"
    "  -b wlr|x11        capture backend (default: auto — wlr on Wayland)\n"
-   "  -x N -y N -w N -h N  capture a screen region (x11 backend only)\n"
+   "  -x N -y N -w N -h N  capture an explicit screen region (x11 backend only)\n"
    "  -r 0|90|180|270   rotate the image (default: 0)\n"
    "\n"
    "Quality / speed:\n"
@@ -282,6 +283,28 @@ int main(int argc, char **argv)
      user picked an output (-o) / a region (-x..-h) or opted out (--no-display).
      Torn down on exit (atexit + clean SIGTERM shutdown), so the extra screen
      appears with pspdisp and vanishes when it stops. */
+  /* X11: -o NAME means "mirror this monitor" — look up its geometry from xrandr
+     and turn it into a capture region, so users pick a screen by name instead of
+     computing -x/-y/-w/-h. (On Wayland the wlr backend uses the name directly.) */
+  if (g_opt.capture == CAPTURE_X11 && g_wlr_output_name) {
+    char qc[256];
+    snprintf(qc, sizeof qc,
+      "xrandr 2>/dev/null | awk -v o=\"%s\" '$1==o && / connected/{"
+      "for(i=1;i<=NF;i++) if($i ~ /^[0-9]+x[0-9]+\\+[0-9]+\\+[0-9]+$/){print $i; exit}}'",
+      g_wlr_output_name);
+    FILE *qp = popen(qc, "r");
+    int oW = 0, oH = 0, oX = 0, oY = 0;
+    if (qp) { char ql[64] = ""; if (fgets(ql, sizeof ql, qp)) sscanf(ql, "%dx%d+%d+%d", &oW, &oH, &oX, &oY); pclose(qp); }
+    if (oW > 0 && oH > 0) {
+      g_opt.x = oX; g_opt.y = oY; g_opt.w = oW; g_opt.h = oH;
+      printf("Mirroring X11 output %s (%dx%d @ %d,%d).\n", g_wlr_output_name, oW, oH, oX, oY);
+    } else {
+      fprintf(stderr, "output '%s' not found (check: xrandr | grep ' connected')\n",
+              g_wlr_output_name);
+      return 1;
+    }
+  }
+
   bool region_is_default = (g_opt.x == 0 && g_opt.y == 0 &&
                             g_opt.w == PSP_W && g_opt.h == PSP_H);
   bool may_auto = !g_opt.no_display && g_wlr_output_name == NULL &&

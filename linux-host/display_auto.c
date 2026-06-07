@@ -4,9 +4,17 @@
    start and removes it on exit — so the PSP shows up as a real extra monitor
    that appears when you start pspdisp and disappears when you stop it.
 
-   Supported compositors (both capture via wlr-screencopy):
-     - sway      : swaymsg create_output / output ... / unplug
-     - Hyprland  : hyprctl output create headless / keyword monitor / remove
+   Supported compositors:
+     - sway      : swaymsg create_output / output ... / unplug   (wlr-screencopy)
+     - Hyprland  : hyprctl output create headless / monitor / remove (wlr-screencopy)
+     - X11       : grow the framebuffer past the real screen and carve the extra
+                   strip into a monitor with `xrandr --setmonitor` (XShm capture)
+
+   The X11 path is driver-agnostic: it needs no VirtualHeads support (which
+   amdgpu and the NVIDIA DDX lack, and many modesetting builds ship without), so
+   it works on AMD/Intel/NVIDIA alike. It only needs the X screen's `Virtual`
+   size to be larger than the desktop — the installer drops an xorg.conf snippet
+   that sets `Virtual 5120 2160` so there's always headroom for the strip.
 
    On anything else display_auto_create() returns NULL and the caller falls
    back to mirroring an existing output. */
@@ -18,6 +26,7 @@
 typedef enum { WM_NONE, WM_SWAY, WM_HYPR, WM_X11 } wm_kind;
 static wm_kind   wm = WM_NONE;
 static char      created_name[64];     /* the output we enabled, "" if none */
+static int       x11_orig_w, x11_orig_h;  /* framebuffer size to restore on exit */
 
 static wm_kind detect_wm(void)
 {
@@ -28,7 +37,7 @@ static wm_kind detect_wm(void)
       return WM_HYPR;
     return WM_NONE;
   }
-  /* X11: usable only if a spare VIRTUAL output exists (installer sets it up). */
+  /* X11: the framebuffer-strip method works on any driver (no VirtualHeads). */
   if (getenv("DISPLAY") && system("command -v xrandr >/dev/null 2>&1") == 0)
     return WM_X11;
   return WM_NONE;
@@ -81,20 +90,26 @@ const char *display_auto_create(int w, int h)
       "hyprctl keyword monitor \"$new,%dx%d,${xoff}x0,1\" >/dev/null 2>&1;"
       "printf '%%s' \"$new\"",
       w, h);
-  } else { /* WM_X11: enable a spare VIRTUAL output (installer set up VirtualHeads) */
-    /* find a VIRTUAL output, add a mode, enable it right of current screens,
-       then print "NAME xoff" so we can set the capture region. */
+  } else { /* WM_X11: grow the framebuffer and carve the off-screen strip */
+    /* Place a w x h region just right of the current desktop. The framebuffer is
+       grown to (curW + w) so the strip lives in video memory but on no physical
+       output; `--setmonitor` makes the WM treat it as a real head. We print
+       "xoff curW curH" so the caller sets the capture region and we can restore
+       the framebuffer on exit. Falls back (exit 1) if the screen can't grow
+       (Virtual too small) — caller then mirrors instead. */
     snprintf(cmd, sizeof cmd,
-      "v=$(xrandr 2>/dev/null | grep -iE '^(VIRTUAL|None-)[0-9A-Za-z-]* ' | awk '{print $1}' | head -1);"
-      "[ -z \"$v\" ] && exit 1;"
-      "xoff=$(xrandr 2>/dev/null | grep -oE '[0-9]+x[0-9]+\\+[0-9]+\\+[0-9]+' | awk -F'[x+]' '{e=$3+$1; if(e>m)m=e} END{print m+0}');"
-      "m=%dx%d_psp;"
-      "params=$(cvt %d %d 60 2>/dev/null | sed -nE 's/^Modeline \"[^\"]*\" +//p');"
-      "[ -n \"$params\" ] && xrandr --newmode \"$m\" $params 2>/dev/null;"
-      "xrandr --addmode \"$v\" \"$m\" 2>/dev/null || m=%dx%d;"
-      "xrandr --output \"$v\" --mode \"$m\" --pos \"${xoff}x0\" 2>/dev/null || exit 1;"
-      "printf '%%s %%s' \"$v\" \"$xoff\"",
-      w, h, w, h, w, h);
+      "cur=$(xrandr 2>/dev/null | awk '/^Screen 0/{w=$8;h=$10;sub(/,/,\"\",w);sub(/,/,\"\",h);print w\" \"h}');"
+      "set -- $cur; cw=$1; ch=$2;"
+      "[ -z \"$cw\" ] && exit 1;"
+      "xoff=$cw; nw=$((cw + %d)); nh=$ch; [ %d -gt $nh ] && nh=%d;"
+      "xrandr --fb ${nw}x${nh} 2>/dev/null || exit 1;"
+      "gw=$(xrandr 2>/dev/null | awk '/^Screen 0/{w=$8;sub(/,/,\"\",w);print w}');"
+      "if [ \"${gw:-0}\" -lt \"$nw\" ] 2>/dev/null; then xrandr --fb ${cw}x${ch} 2>/dev/null; exit 1; fi;"
+      "xrandr --delmonitor PSP-1 2>/dev/null;"
+      "xrandr --setmonitor PSP-1 %d/100x%d/60+${xoff}+0 none 2>/dev/null"
+      "  || { xrandr --fb ${cw}x${ch} 2>/dev/null; exit 1; };"
+      "printf '%%s %%s %%s' \"$xoff\" \"$cw\" \"$ch\"",
+      w, h, h, w, h);
   }
 
   FILE *p = popen(cmd, "r");
@@ -104,12 +119,15 @@ const char *display_auto_create(int w, int h)
   pclose(p);
 
   if (wm == WM_X11) {
-    /* parse "NAME xoff", set the X11 capture region to the virtual monitor */
-    char vname[64]; int xoff = 0;
-    if (sscanf(line, "%63s %d", vname, &xoff) < 1 || vname[0] == '\0') return NULL;
-    snprintf(created_name, sizeof created_name, "%s", vname);
+    /* parse "xoff origW origH": set the capture region to the off-screen strip
+       and remember the framebuffer size to restore on exit. */
+    int xoff = -1;
+    if (sscanf(line, "%d %d %d", &xoff, &x11_orig_w, &x11_orig_h) != 3 || xoff < 0)
+      return NULL;
+    snprintf(created_name, sizeof created_name, "PSP-1");
     g_opt.x = xoff; g_opt.y = 0; g_opt.w = w; g_opt.h = h;
-    VLOG("display: enabled X11 virtual output %s (%dx%d @ x=%d)\n", created_name, w, h, xoff);
+    VLOG("display: X11 virtual head PSP-1 (%dx%d @ x=%d), fb %dx%d->%dx%d\n",
+         w, h, xoff, x11_orig_w, x11_orig_h, xoff + w, x11_orig_h);
     return created_name;
   }
 
@@ -127,13 +145,15 @@ const char *display_auto_create(int w, int h)
 void display_auto_destroy(void)
 {
   if (created_name[0] == '\0') return;
-  char cmd[160];
+  char cmd[200];
   if (wm == WM_SWAY)
     snprintf(cmd, sizeof cmd, "swaymsg 'output %s unplug' >/dev/null 2>&1", created_name);
   else if (wm == WM_HYPR)
     snprintf(cmd, sizeof cmd, "hyprctl output remove %s >/dev/null 2>&1", created_name);
-  else /* WM_X11 */
-    snprintf(cmd, sizeof cmd, "xrandr --output %s --off >/dev/null 2>&1", created_name);
+  else /* WM_X11: drop the carved monitor and shrink the framebuffer back */
+    snprintf(cmd, sizeof cmd,
+      "xrandr --delmonitor PSP-1 >/dev/null 2>&1; xrandr --fb %dx%d >/dev/null 2>&1",
+      x11_orig_w, x11_orig_h);
   if (system(cmd) != 0) { /* best effort */ }
   VLOG("display: removed virtual output %s\n", created_name);
   created_name[0] = '\0';

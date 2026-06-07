@@ -277,7 +277,8 @@ int main(int argc, char **argv)
 
   /* By default, create a dedicated virtual output (a real extra monitor) and
      capture that, instead of mirroring an existing screen. Works on sway/Hyprland
-     (wlr) and on X11 (a VirtualHeads output the installer set up). Skipped if the
+     (wlr) and on X11 (an off-screen framebuffer strip; installer adds the
+     `Virtual` headroom). Skipped if the
      user picked an output (-o) / a region (-x..-h) or opted out (--no-display).
      Torn down on exit (atexit + clean SIGTERM shutdown), so the extra screen
      appears with pspdisp and vanishes when it stops. */

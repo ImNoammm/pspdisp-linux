@@ -114,24 +114,60 @@ else
   echo "   built: $HERE/linux-host/pspdisp  (run 'sudo make -C linux-host install', or ./install.sh --user)"
 fi
 
-# --- 2b. X11: enable a spare virtual output so pspdisp can make a new display -
-# sway/Hyprland get an on-the-fly virtual output for free; X11 needs a one-time
-# xorg.conf snippet (VirtualHeads) + an X restart. After that, plain `pspdisp`
-# enables/captures/removes the virtual monitor itself — no flags, like Wayland.
+# --- 2b. X11: give the framebuffer headroom so pspdisp can make a new display -
+# sway/Hyprland get an on-the-fly virtual output for free. On X11 pspdisp makes
+# the PSP a real extra monitor by growing the framebuffer past the desktop and
+# carving the off-screen strip into a head (xrandr --setmonitor) — this needs
+# the X screen's "Virtual" size to exceed the desktop, set once via xorg.conf.
+# This is driver-agnostic (works on amdgpu / NVIDIA / Intel — unlike VirtualHeads,
+# which amdgpu and the NVIDIA DDX don't support). We REUSE the existing GPU
+# Device (no driver swap, so display tweaks like overscan are untouched).
 if [ "${XDG_SESSION_TYPE:-}" = x11 ] || { [ -n "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; }; then
   XCONF=/etc/X11/xorg.conf.d/20-pspdisp-virtual.conf
   if [ -f "$XCONF" ]; then
-    echo ">> X11 virtual output already set up ($XCONF)."
-  elif ask "X11 detected. Enable a virtual monitor so the PSP is a real extra screen (one-time, needs an X restart)?" y; then
-    run_root "mkdir -p /etc/X11/xorg.conf.d && cat > $XCONF <<'EOF'
-# Added by PSPdisp: give the modesetting driver a spare VIRTUAL output that
-# pspdisp enables on the fly as the PSP monitor. Delete this file to undo.
-Section \"Device\"
-    Identifier \"PSPdisp modesetting\"
-    Driver     \"modesetting\"
-    Option     \"VirtualHeads\" \"1\"
+    echo ">> X11 virtual framebuffer already set up ($XCONF)."
+  elif ask "X11 detected. Let the PSP be a real extra screen (adds framebuffer headroom; one-time, needs an X restart)?" y; then
+    # Reuse the user's existing GPU Device if they have one (don't swap drivers).
+    DEVID=$(awk '
+      /[Ss]ection[ \t]+"[Dd]evice"/ {ind=1}
+      ind && /[Ii]dentifier/ {if (match($0, /"[^"]+"/)) {print substr($0, RSTART+1, RLENGTH-2); exit}}
+    ' /etc/X11/xorg.conf.d/*.conf /etc/X11/xorg.conf 2>/dev/null | head -1)
+    if [ -n "$DEVID" ]; then
+      BODY="Section \"Screen\"
+    Identifier \"PSPdisp Screen\"
+    Device     \"$DEVID\"
+    SubSection \"Display\"
+        Virtual 5120 2160
+    EndSubSection
+EndSection"
+    else
+      # No explicit Device — detect the running DDX so we match the right driver.
+      DDX=modesetting
+      for L in "$HOME"/.local/share/xorg/Xorg.*.log /var/log/Xorg.*.log; do
+        [ -f "$L" ] || continue
+        case "$(grep -oE '\((II|--)\) (AMDGPU|modeset|NVIDIA|intel|NOUVEAU|RADEON)\(0\)' "$L" 2>/dev/null | head -1)" in
+          *AMDGPU*) DDX=amdgpu ;; *NVIDIA*) DDX=nvidia ;; *intel*) DDX=intel ;;
+          *NOUVEAU*) DDX=nouveau ;; *RADEON*) DDX=radeon ;; *modeset*) DDX=modesetting ;;
+        esac
+        break
+      done
+      BODY="Section \"Device\"
+    Identifier \"PSPdisp GPU\"
+    Driver     \"$DDX\"
 EndSection
-EOF" && echo "   Wrote $XCONF — LOG OUT and back in (restart X), then just run 'pspdisp'." \
+Section \"Screen\"
+    Identifier \"PSPdisp Screen\"
+    Device     \"PSPdisp GPU\"
+    SubSection \"Display\"
+        Virtual 5120 2160
+    EndSubSection
+EndSection"
+    fi
+    run_root "mkdir -p /etc/X11/xorg.conf.d && cat > $XCONF <<EOF
+# Added by PSPdisp: enlarge the X framebuffer (Virtual) so pspdisp can place the
+# PSP as an off-screen monitor. Driver/overscan untouched. Delete to undo.
+$BODY
+EOF" && echo "   Wrote $XCONF — restart X (log out/in), then just run 'pspdisp'." \
        || echo "   (could not write $XCONF; pspdisp will mirror instead)"
   else
     echo "   Skipped — pspdisp will mirror your screen on X11."

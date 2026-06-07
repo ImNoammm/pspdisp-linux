@@ -246,12 +246,14 @@ PSPdisp installed.
 1. On the PSP: launch PSPdisp from the Game menu, pick USB (or WLAN).
 2. On this PC, run the host:
 
-   pspdisp              # USB; makes a new PSP display (sway/Hyprland/X11)
-   pspdisp -i           # ...and expose PSP buttons as a gamepad
-   pspdisp -t tcp -k PW # WLAN instead of USB (PSP connects to this PC)
-   pspdisp --no-display # mirror an existing screen instead of a new one
-   pspdisp --kill       # stop the host cleanly
-   pspdisp --help       # all options
+   pspdisp               # USB; makes a new PSP display (sway/Hyprland/X11)
+   pspdisp -i            # ...and expose PSP buttons as a gamepad
+   pspdisp -t tcp -k PW  # WLAN instead of USB (PSP connects to this PC)
+   pspdisp --no-display  # mirror an existing screen instead of a new one
+   pspdisp -o HDMI-A-1   # mirror one monitor by name (Wayland and X11)
+   pspdisp --background  # run detached (logs to \$XDG_RUNTIME_DIR/pspdisp.log)
+   pspdisp --kill        # stop the host cleanly
+   pspdisp --help        # all options
 
 Re-flash the PSP later:  ./linux-host/install-psp.sh
 ============================================================

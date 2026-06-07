@@ -122,7 +122,11 @@ fi
 # This is driver-agnostic (works on amdgpu / NVIDIA / Intel — unlike VirtualHeads,
 # which amdgpu and the NVIDIA DDX don't support). We REUSE the existing GPU
 # Device (no driver swap, so display tweaks like overscan are untouched).
-if [ "${XDG_SESSION_TYPE:-}" = x11 ] || { [ -n "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; }; then
+# Trigger on an X11 session, OR a DISPLAY with no Wayland, OR a running Xorg with
+# no Wayland session (covers installing over SSH onto an X11 box).
+if [ "${XDG_SESSION_TYPE:-}" = x11 ] \
+   || { [ -n "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; } \
+   || { [ -z "${WAYLAND_DISPLAY:-}" ] && [ "${XDG_SESSION_TYPE:-}" != wayland ] && pgrep -x Xorg >/dev/null 2>&1; }; then
   XCONF=/etc/X11/xorg.conf.d/20-pspdisp-virtual.conf
   if [ -f "$XCONF" ]; then
     echo ">> X11 virtual framebuffer already set up ($XCONF)."

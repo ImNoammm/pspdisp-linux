@@ -39,28 +39,38 @@ for a in "$@"; do
 done
 
 # --- interactive prompts (only for choices not forced by a flag) -----------
-ask() {  # ask "Question" default(y/n) -> returns 0 for yes, 1 for no
+ask() {  # ask "Question" default(y/n) -> 0 = yes, 1 = no.
+         # Reads a single keypress (no Enter needed); Enter alone = default.
   _q="$1"; _def="$2"
   if [ ! -t 0 ]; then [ "$_def" = y ] && return 0 || return 1; fi   # non-tty: default
   _hint=$([ "$_def" = y ] && echo "[Y/n]" || echo "[y/N]")
   printf '%s %s ' "$_q" "$_hint"
-  read _ans || _ans=""
-  _ans=${_ans:-$_def}
-  case "$_ans" in [Yy]*) return 0 ;; *) return 1 ;; esac
+  _old=$(stty -g 2>/dev/null)
+  stty -icanon -echo min 1 time 0 2>/dev/null
+  while :; do
+    _k=$(dd bs=1 count=1 2>/dev/null | tr -d '\r\n')   # one keypress, strip Enter
+    case "$_k" in
+      y|Y) stty "$_old" 2>/dev/null; printf 'y\n'; return 0 ;;
+      n|N) stty "$_old" 2>/dev/null; printf 'n\n'; return 1 ;;
+      '')  stty "$_old" 2>/dev/null; printf '%s\n' "$_def"   # Enter -> default
+           [ "$_def" = y ] && return 0 || return 1 ;;
+      *)   printf '\nkey invalid please select y, n or enter for default\n%s %s ' "$_q" "$_hint" ;;
+    esac
+  done
 }
 
 if [ "$USER_INSTALL" = -1 ]; then
-  if ask "Install just for you (~/.local/bin)? Choose 'n' for system-wide (/usr/local/bin)." y
+  if ask "Install just for you (~/.local/bin)? Choose 'n' for system-wide (/usr/local/bin). (default n)" n
   then USER_INSTALL=1; else USER_INSTALL=0; fi
 fi
 if [ "$WITH_PSP" = -1 ]; then
-  if ask "Also build the PSP homebrew (fetches the pspdev toolchain, ~165 MB)?" y
+  if ask "Also build the PSP homebrew (fetches the pspdev toolchain, ~165 MB)? (default y)" y
   then WITH_PSP=1; else WITH_PSP=0; fi
 fi
 # Which PSP app: the minimal USB-only rewrite (smaller, faster boot, no menu
 # bloat) or the original full app that also supports WiFi/TCP.
 if [ "$WITH_PSP" = 1 ] && [ "$WIFI" = -1 ]; then
-  if ask "Are you planning to use a WiFi connection? Press n if not, y if you do (n compiles the minimal USB-only app; y installs the full app)." n
+  if ask "Are you planning to use a WiFi connection? Press n if not, y if you do (n compiles the minimal USB-only app; y installs the full app). (default n)" n
   then WIFI=1; else WIFI=0; fi
 fi
 

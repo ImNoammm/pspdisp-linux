@@ -26,6 +26,3 @@ psp/source-min/payload/
 
 # internal notes, not published
 PORT.md
-
-# graphify knowledge-graph output (do not publish)
-graphify-out/

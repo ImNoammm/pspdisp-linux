@@ -1,13 +1,14 @@
 #!/usr/bin/env sh
 # PSPdisp Linux installer.
 #
-# Run it with no arguments and it asks two questions (install location, and
-# whether to build the PSP homebrew). Defaults: per-user install, build the
-# homebrew. Just press Enter to accept.
+# Run it with no arguments and it asks a few questions (install location,
+# whether to build the PSP homebrew, and which PSP app). Defaults: per-user
+# install, build the homebrew, minimal USB-only app. Just press Enter to accept.
 #
 # Non-interactive overrides (skip the prompts):
 #   --user / --system    install to ~/.local/bin  /  /usr/local/bin
 #   --with-psp / --no-psp build the PSP homebrew (and flash) or not
+#   --wifi / --no-wifi   full WiFi-capable app / minimal USB-only app (default)
 #   --no-sudo            skip anything needing root (build only)
 #
 # Works on Debian/Ubuntu/PikaOS (apt), Fedora (dnf), Arch (pacman),
@@ -19,6 +20,7 @@ HERE=$(CDPATH= cd "$(dirname "$0")" && pwd)
 # tri-state choices: -1 = ask interactively, 0/1 = forced by a flag
 USER_INSTALL=-1     # 1 = ~/.local/bin, 0 = /usr/local/bin
 WITH_PSP=-1         # 1 = build+flash homebrew, 0 = host only
+WIFI=-1             # 1 = full app (USB+WiFi), 0 = minimal USB-only app
 FLASH=1; USE_SUDO=1
 for a in "$@"; do
   case "$a" in
@@ -26,10 +28,12 @@ for a in "$@"; do
     --system)   USER_INSTALL=0 ;;
     --with-psp) WITH_PSP=1 ;;
     --no-psp)   WITH_PSP=0 ;;
+    --wifi)     WIFI=1 ;;                 # install the full (WiFi-capable) app
+    --no-wifi)  WIFI=0 ;;                 # build the minimal USB-only app
     --flash)    WITH_PSP=1; FLASH=1 ;;   # implies --with-psp
     --no-flash) FLASH=0 ;;
     --no-sudo)  USE_SUDO=0 ;;
-    -h|--help)  sed -n '2,13p' "$0"; exit 0 ;;
+    -h|--help)  sed -n '2,15p' "$0"; exit 0 ;;
     *) echo "unknown option: $a" >&2; exit 1 ;;
   esac
 done
@@ -52,6 +56,12 @@ fi
 if [ "$WITH_PSP" = -1 ]; then
   if ask "Also build the PSP homebrew (fetches the pspdev toolchain, ~165 MB)?" y
   then WITH_PSP=1; else WITH_PSP=0; fi
+fi
+# Which PSP app: the minimal USB-only rewrite (smaller, faster boot, no menu
+# bloat) or the original full app that also supports WiFi/TCP.
+if [ "$WITH_PSP" = 1 ] && [ "$WIFI" = -1 ]; then
+  if ask "Are you planning to use a WiFi connection? Press n if not, y if you do (n compiles the minimal USB-only app; y installs the full app)." n
+  then WIFI=1; else WIFI=0; fi
 fi
 
 SUDO=""
@@ -209,8 +219,15 @@ if [ "$WITH_PSP" = 1 ]; then
     # sanity: the toolchain must actually run
     "$PSPDEV_DIR/bin/psp-gcc" --version >/dev/null 2>&1 || { echo "pspdev install looks broken ($PSPDEV_DIR)" >&2; exit 1; }
   fi
-  echo ">> Building PSP homebrew ..."
-  PSPDEV="$PSPDEV_DIR" "$HERE/build-psp.sh"
+  if [ "$WIFI" = 1 ]; then
+    echo ">> Building PSP homebrew (full app, USB + WiFi) ..."
+    PSPDEV="$PSPDEV_DIR" "$HERE/build-psp.sh"
+    PSP_PAYLOAD="$HERE/linux-host/psp-payload"
+  else
+    echo ">> Building PSP homebrew (minimal USB-only app) ..."
+    PSPDEV="$PSPDEV_DIR" "$HERE/psp/source-min/build.sh" "$HERE/psp/source-min/payload"
+    PSP_PAYLOAD="$HERE/psp/source-min/payload"
+  fi
 
   if [ "$FLASH" = 1 ]; then
     echo ">> Copy the homebrew onto the PSP."
@@ -231,7 +248,7 @@ if [ "$WITH_PSP" = 1 ]; then
       tries=$((tries + 1))
     done
     if [ -n "${PSP_MNT:-}" ]; then
-      "$HERE/linux-host/install-psp.sh" "$HERE/linux-host/psp-payload" "$PSP_MNT" || true
+      "$HERE/linux-host/install-psp.sh" "$PSP_PAYLOAD" "$PSP_MNT" || true
     else
       echo "   No PSP found. Flash it later: ./linux-host/install-psp.sh"
     fi

@@ -12,6 +12,14 @@ psp/source/*.elf
 psp/source/**/*.prx
 psp/source/PSPDISP.CFG
 
+# PSP minimal (USB-only) app build output
+psp/source-min/EBOOT.PBP
+psp/source-min/PARAM.SFO
+psp/source-min/**/*.elf
+psp/source-min/**/*.prx
+psp/source-min/usbhostfs/exports.c
+psp/source-min/payload/
+
 # misc
 *.log
 *.tmp

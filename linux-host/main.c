@@ -186,8 +186,8 @@ static void usage(const char *p)
    "  -r 0|90|180|270   rotate the image (default: 0)\n"
    "\n"
    "Quality / speed:\n"
-   "  -q 1..100         JPEG quality (default: 75; lower = faster)\n"
-   "  -f N              max frames per second (default: 20; PSP caps at 60)\n"
+   "  -q 1..100         JPEG quality (default: 100; lower = faster)\n"
+   "  -f N              max frames per second (default: 60; PSP caps at 60)\n"
    "\n"
    "Extras:\n"
    "  -i                expose PSP buttons as a uinput gamepad\n"
@@ -224,7 +224,7 @@ int main(int argc, char **argv)
     g_opt.capture = CAPTURE_X11;
   }
   g_opt.x = g_opt.y = 0; g_opt.w = PSP_W; g_opt.h = PSP_H;
-  g_opt.rotation = 0; g_opt.quality = 75; g_opt.fps = 20;
+  g_opt.rotation = 0; g_opt.quality = 100; g_opt.fps = 60;
   g_opt.tcp_port = NET_PORT;
   g_opt.disp_w = 1920; g_opt.disp_h = 1080;   /* virtual output, downscaled */
 

@@ -46,12 +46,16 @@ copy_verified() {
   [ -f "$src" ] || { say "  skip (missing): $(basename "$src")"; return 0; }
   i=1
   while [ "$i" -le 3 ]; do
+    # Indicator printed before the copy (no newline) so the user sees it in
+    # progress; the result completes the same line. Copies to flash + sync can
+    # take a few seconds on a slow PSP cable.
+    printf '  copying %s (%s bytes) ... ' "$(basename "$src")" "$(wc -c < "$src" | tr -d ' ')"
     cp "$src" "$dst"; sync
     if cmp -s "$src" "$dst"; then
-      say "  OK   $(basename "$src")  sha256=$(sha "$dst" | cut -c1-12)…"
+      printf 'done, verified (sha256=%s…)\n' "$(sha "$dst" | cut -c1-12)"
       return 0
     fi
-    say "  retry $i: checksum mismatch on $(basename "$src") (cable?)"
+    printf 'checksum mismatch (cable?), retry %s\n' "$i"
     i=$((i + 1))
   done
   die "FAILED to copy $(basename "$src") intact after 3 tries. Use a better USB cable."

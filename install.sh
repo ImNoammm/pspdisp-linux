@@ -241,26 +241,15 @@ if [ "$WITH_PSP" = 1 ]; then
 
   if [ "$FLASH" = 1 ]; then
     echo ">> Copy the homebrew onto the PSP."
-    echo "   On the PSP: Settings -> USB Connection (mounts it as a USB drive)."
-    # wait for a mounted PSP, retrying, so the user has time to connect it
-    tries=0
-    while [ "$tries" -lt 30 ]; do
-      for base in /run/media/"$USER"/* /media/"$USER"/* /media/* /mnt/*; do
-        [ -d "$base/PSP" ] && { PSP_MNT="$base"; break; }
-      done
-      [ -n "${PSP_MNT:-}" ] && break
-      if [ "$tries" = 0 ] && [ -t 0 ]; then
-        printf '   Connect + mount the PSP, then press Enter (or Ctrl-C to skip flashing)... '
-        read _ || break
-      else
-        sleep 2
-      fi
-      tries=$((tries + 1))
-    done
-    if [ -n "${PSP_MNT:-}" ]; then
-      "$HERE/linux-host/install-psp.sh" "$PSP_PAYLOAD" "$PSP_MNT" || true
-    else
-      echo "   No PSP found. Flash it later: ./linux-host/install-psp.sh"
+    echo "   On the PSP: Settings -> USB Connection (exposes it as a USB drive)."
+    # install-psp.sh finds the PSP by its USB id and mounts it if needed, so we
+    # don't pre-scan mountpoints here (that grabbed the wrong drive before).
+    if [ -t 0 ]; then
+      printf '   Connect the PSP in USB storage mode, then press Enter (or Ctrl-C to skip)... '
+      read _ || true
+    fi
+    if "$HERE/linux-host/install-psp.sh" "$PSP_PAYLOAD"; then :; else
+      echo "   Flash it later with: ./linux-host/install-psp.sh \"$PSP_PAYLOAD\""
     fi
   fi
 fi

@@ -54,7 +54,7 @@ static void decode_format(uint32_t fmt)
   }
 }
 
-/* ---- output name plumbing (wl_output v4) ------------------------------- */
+/* output name plumbing (wl_output v4) */
 static void out_geometry(void *d, struct wl_output *o, int32_t x, int32_t y,
   int32_t pw, int32_t ph, int32_t sp, const char *mk, const char *md, int32_t tr)
 { (void)d;(void)o;(void)x;(void)y;(void)pw;(void)ph;(void)sp;(void)mk;(void)md;(void)tr; }
@@ -69,7 +69,7 @@ static const struct wl_output_listener out_listener = {
   out_geometry, out_mode, out_done, out_scale, out_name, out_desc
 };
 
-/* ---- registry ---------------------------------------------------------- */
+/* registry */
 static void reg_global(void *d, struct wl_registry *r, uint32_t id,
                        const char *iface, uint32_t ver)
 {
@@ -89,7 +89,7 @@ static void reg_global(void *d, struct wl_registry *r, uint32_t id,
 static void reg_remove(void *d, struct wl_registry *r, uint32_t id) { (void)d;(void)r;(void)id; }
 static const struct wl_registry_listener reg_listener = { reg_global, reg_remove };
 
-/* ---- shm pool buffer --------------------------------------------------- */
+/* shm pool buffer */
 static bool make_buffer(uint32_t fmt, uint32_t w, uint32_t h, uint32_t stride)
 {
   if (buf) { wl_buffer_destroy(buf); buf = NULL; }
@@ -115,7 +115,7 @@ static bool make_buffer(uint32_t fmt, uint32_t w, uint32_t h, uint32_t stride)
   return buf != NULL;
 }
 
-/* ---- frame events ------------------------------------------------------ */
+/* frame events */
 static void fr_buffer(void *d, struct zwlr_screencopy_frame_v1 *f,
                       uint32_t fmt, uint32_t w, uint32_t h, uint32_t stride)
 {
@@ -138,7 +138,7 @@ static const struct zwlr_screencopy_frame_v1_listener fr_listener = {
   fr_buffer, fr_flags, fr_ready, fr_failed, fr_damage, fr_dmabuf, fr_buffer_done
 };
 
-/* ---- backend ----------------------------------------------------------- */
+/* backend */
 extern const char *g_wlr_output_name;     /* set from main via option        */
 
 static bool w_init(void)

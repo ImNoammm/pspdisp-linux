@@ -1,4 +1,4 @@
-/* PSPdisp Linux host — shared interfaces between modules. */
+/* PSPdisp Linux host: shared interfaces between modules. */
 #ifndef PSPDISP_H
 #define PSPDISP_H
 
@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include "proto.h"
 
-/* ---- runtime options (defined in main.c) ------------------------------- */
+/* runtime options (defined in main.c) */
 typedef enum { TRANSPORT_USB, TRANSPORT_TCP } transport_kind;
 typedef enum { CAPTURE_WLR, CAPTURE_X11, CAPTURE_PORTAL } capture_kind;
 
@@ -29,12 +29,12 @@ typedef struct {
 extern options g_opt;
 #define VLOG(...) do { if (g_opt.verbose) fprintf(stderr, __VA_ARGS__); } while (0)
 
-/* ---- auto virtual display (display_sway.c) ----------------------------- */
+/* auto virtual display (display_auto.c) */
 bool        display_sway_available(void);
 const char *display_auto_create(int w, int h);   /* NULL if unavailable     */
 void        display_auto_destroy(void);
 
-/* ---- transport backend (transport_usb.c / transport_tcp.c) ------------- */
+/* transport backend (transport_usb.c / transport_tcp.c) */
 typedef struct {
   const char *name;
   bool (*open)(void);                       /* connect/accept + handshake   */
@@ -47,7 +47,7 @@ typedef struct {
 transport_backend *transport_usb(void);
 transport_backend *transport_tcp(void);
 
-/* ---- capture backend (capture_x11.c / capture_evdi.c) ------------------ */
+/* capture backend (capture_wlr.c / capture_x11.c / capture_portal.c) */
 typedef struct {
   const char *name;
   int width, height;                         /* native capture dimensions   */
@@ -65,19 +65,19 @@ extern const char *g_wlr_output_name;   /* -o <output>, NULL = first output */
 capture_backend *capture_portal(void);  /* KDE/GNOME via PipeWire portal */
 #endif
 
-/* ---- frame encode (frame.c) -------------------------------------------- */
+/* frame encode (frame.c) */
 /* Encode the current capture (via cap->pixel) to a malloc'd JPEG buffer.
    Returns NULL on error; sets *size and the rotation/format *flags. */
 unsigned char *frame_encode(capture_backend *cap, unsigned long *size, uint32_t *flags);
 /* Cheap content hash for skip-unchanged-frame detection. */
 uint64_t frame_hash(capture_backend *cap);
 
-/* ---- input injection (input.c) ----------------------------------------- */
+/* input injection (input.c) */
 bool input_init(void);
 void input_update(uint32_t buttons, uint8_t analogX, uint8_t analogY);
 void input_term(void);
 
-/* ---- audio capture (audio_pulse.c) ------------------------------------- */
+/* audio capture (audio_pulse.c) */
 bool audio_init(void);
 /* Fill up to one PSP audio frame; returns bytes produced (0 if none ready). */
 int  audio_read_frame(uint8_t *dst, int max, uint32_t *audio_flags);

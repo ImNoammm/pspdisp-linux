@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — USB driver bring-up.
+  pspdisp-min: USB driver bring-up.
 */
 #include <pspkernel.h>
 #include <pspusb.h>

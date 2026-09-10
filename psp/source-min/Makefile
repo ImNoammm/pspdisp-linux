@@ -12,7 +12,7 @@ ASFLAGS = $(CFLAGS)
 
 # Only the libs build.mak does NOT add by default. It already appends
 # -lpspdebug -lpspdisplay -lpspge -lpspctrl, and the specs add -lpspuser/-lpspsdk
-# /-lpspkernel — listing those again makes duplicate import stubs ("stubs out of
+# /-lpspkernel, listing those again makes duplicate import stubs ("stubs out of
 # order"). pspDebugScreen (overlay) rides on the auto-added -lpspdebug.
 LIBS = -lpspgum -lpspgu -lpspjpeg -lpsputility -lpsppower -lpspusb -lpspkubridge -lm
 

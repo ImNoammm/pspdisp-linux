@@ -1,4 +1,4 @@
-/* PSPdisp Linux host — entry point and frame pump.
+/* PSPdisp Linux host: entry point and frame pump.
 
    Replaces the original Windows host (Delphi app + XPDM mirror driver):
      capture (wlroots/X11) -> scale 480x272 -> JPEG -> transport (USB/TCP) -> PSP
@@ -164,7 +164,7 @@ static void loop(void)
 static void usage(const char *p)
 {
   printf(
-   "PSPdisp Linux host — use a PSP as a second display + gamepad.\n"
+   "PSPdisp Linux host: use a PSP as a second display + gamepad.\n"
    "\n"
    "usage: %s [options]\n"
    "\n"
@@ -283,7 +283,7 @@ int main(int argc, char **argv)
   if (background) daemonize();       /* detach; parent prints how to --kill it */
 
   /* Install handlers WITHOUT SA_RESTART so SIGTERM/SIGINT interrupt blocking
-     syscalls (accept, recv, usb transfers) with EINTR — the loops then see
+     syscalls (accept, recv, usb transfers) with EINTR; the loops then see
      run==0 and exit cleanly. With signal()'s default SA_RESTART the host could
      hang in accept()/recv() and only die to kill -9 (which wedges USB). */
   {
@@ -314,7 +314,7 @@ int main(int argc, char **argv)
      user picked an output (-o) / a region (-x..-h) or opted out (--no-display).
      Torn down on exit (atexit + clean SIGTERM shutdown), so the extra screen
      appears with pspdisp and vanishes when it stops. */
-  /* X11: -o NAME means "mirror this monitor" — look up its geometry from xrandr
+  /* X11: -o NAME means "mirror this monitor", look up its geometry from xrandr
      and turn it into a capture region, so users pick a screen by name instead of
      computing -x/-y/-w/-h. (On Wayland the wlr backend uses the name directly.) */
   if (g_opt.capture == CAPTURE_X11 && g_wlr_output_name) {
@@ -347,7 +347,7 @@ int main(int argc, char **argv)
       if (g_opt.capture == CAPTURE_WLR) g_wlr_output_name = name;
       /* X11: display_auto_create already set g_opt.x/y/w/h to the virtual monitor */
       atexit(display_auto_destroy);
-      printf("Created virtual display %s (%dx%d) — removed when pspdisp stops.\n",
+      printf("Created virtual display %s (%dx%d), removed when pspdisp stops.\n",
              name, g_opt.disp_w, g_opt.disp_h);
     } else {
       VLOG("display: no virtual output available, mirroring instead\n");

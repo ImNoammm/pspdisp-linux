@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — GU display.
+  pspdisp-min: GU display.
 */
 #include <pspkernel.h>
 #include <pspdisplay.h>

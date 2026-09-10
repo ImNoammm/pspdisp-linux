@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — module load helpers.
+  pspdisp-min: module load helpers.
 */
 #include "utils.h"
 #include <kubridge.h>
@@ -11,7 +11,7 @@ SceUID utilsLoadStartModule(const char *path)
     return moduleId;
 
   /* Loader refused (e.g. SCE_KERNEL_ERROR_PROHIBIT_LOADMODULE_DEVICE on some
-     CFW) — retry through kubridge. */
+     CFW), retry through kubridge. */
   moduleId = kuKernelLoadModule((char *)path, 0, NULL);
   if (moduleId < 0)
     return moduleId;

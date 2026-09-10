@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — hardware MJPEG decode.
+  pspdisp-min: hardware MJPEG decode.
 */
 #include <pspkernel.h>
 #include <pspjpeg.h>

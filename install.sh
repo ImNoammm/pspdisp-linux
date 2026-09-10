@@ -2,7 +2,7 @@
 # PSPdisp Linux installer.
 #
 # Run it with no arguments and it asks a few questions (install location,
-# whether to build the PSP homebrew, and which PSP app). Defaults: per-user
+# whether to build the PSP homebrew, and which PSP app). Defaults: system-wide
 # install, build the homebrew, minimal USB-only app. Just press Enter to accept.
 #
 # Non-interactive overrides (skip the prompts):
@@ -38,7 +38,7 @@ for a in "$@"; do
   esac
 done
 
-# --- interactive prompts (only for choices not forced by a flag) -----------
+# interactive prompts (only for choices not forced by a flag)
 ask() {  # ask "Question" default(y/n) -> 0 = yes, 1 = no.
          # Reads a single keypress (no Enter needed); Enter alone = default.
   _q="$1"; _def="$2"
@@ -80,11 +80,11 @@ if [ "$USE_SUDO" = 1 ] && [ "$(id -u)" != 0 ]; then
 fi
 run_root() { if [ -n "$SUDO" ]; then $SUDO sh -c "$*"; else sh -c "$*"; fi; }
 
-# --- 1. install host build dependencies ------------------------------------
+# 1. install host build dependencies
 PSPDEV_PKGS=""
 detect_and_install_deps() {
   # portal deps (libpipewire + glib/gio) enable the KDE/GNOME Wayland backend;
-  # optional — the build auto-detects them.
+  # optional, the build auto-detects them.
   if command -v apt-get >/dev/null 2>&1; then
     PKGS="build-essential pkg-config libusb-1.0-0-dev libjpeg-dev libx11-dev libxext-dev libwayland-dev wayland-protocols libpulse-dev libpipewire-0.3-dev libglib2.0-dev"
     PSPDEV_PKGS="curl tar"
@@ -111,7 +111,7 @@ else
   echo ">> --no-sudo: skipping dependency install (assuming deps present)."
 fi
 
-# --- 2. build + install the host daemon ------------------------------------
+# 2. build + install the host daemon
 echo ">> Building host daemon ..."
 make -C "$HERE/linux-host" clean >/dev/null 2>&1 || true
 make -C "$HERE/linux-host"
@@ -134,12 +134,12 @@ else
   echo "   built: $HERE/linux-host/pspdisp  (run 'sudo make -C linux-host install', or ./install.sh --user)"
 fi
 
-# --- 2b. X11: give the framebuffer headroom so pspdisp can make a new display -
+# 2b. X11: give the framebuffer headroom so pspdisp can make a new display
 # sway/Hyprland get an on-the-fly virtual output for free. On X11 pspdisp makes
 # the PSP a real extra monitor by growing the framebuffer past the desktop and
-# carving the off-screen strip into a head (xrandr --setmonitor) — this needs
+# carving the off-screen strip into a head (xrandr --setmonitor). This needs
 # the X screen's "Virtual" size to exceed the desktop, set once via xorg.conf.
-# This is driver-agnostic (works on amdgpu / NVIDIA / Intel — unlike VirtualHeads,
+# This is driver-agnostic (works on amdgpu / NVIDIA / Intel, unlike VirtualHeads,
 # which amdgpu and the NVIDIA DDX don't support). We REUSE the existing GPU
 # Device (no driver swap, so display tweaks like overscan are untouched).
 # Trigger on an X11 session, OR a DISPLAY with no Wayland, OR a running Xorg with
@@ -165,7 +165,7 @@ if [ "${XDG_SESSION_TYPE:-}" = x11 ] \
     EndSubSection
 EndSection"
     else
-      # No explicit Device — detect the running DDX so we match the right driver.
+      # No explicit Device: detect the running DDX so we match the right driver.
       DDX=modesetting
       for L in "$HOME"/.local/share/xorg/Xorg.*.log /var/log/Xorg.*.log; do
         [ -f "$L" ] || continue
@@ -191,14 +191,14 @@ EndSection"
 # Added by PSPdisp: enlarge the X framebuffer (Virtual) so pspdisp can place the
 # PSP as an off-screen monitor. Driver/overscan untouched. Delete to undo.
 $BODY
-EOF" && echo "   Wrote $XCONF — restart X (log out/in), then just run 'pspdisp'." \
+EOF" && echo "   Wrote $XCONF, restart X (log out/in), then just run 'pspdisp'." \
        || echo "   (could not write $XCONF; pspdisp will mirror instead)"
   else
-    echo "   Skipped — pspdisp will mirror your screen on X11."
+    echo "   Skipped, pspdisp will mirror your screen on X11."
   fi
 fi
 
-# --- 3. optional: pspdev toolchain + PSP homebrew --------------------------
+# 3. optional: pspdev toolchain + PSP homebrew
 if [ "$WITH_PSP" = 1 ]; then
   PSPDEV_DIR="/usr/local/pspdev"
   [ -x "$PSPDEV_DIR/bin/psp-gcc" ] || PSPDEV_DIR="$HOME/pspdev"
@@ -256,11 +256,10 @@ fi
 
 cat <<EOF
 
-============================================================
 PSPdisp installed.
 
-1. On the PSP: launch PSPdisp from the Game menu, pick USB (or WLAN).
-2. On this PC, run the host:
+On the PSP, launch PSPdisp from the Game menu and pick USB (or WLAN).
+Then on this PC:
 
    pspdisp               # USB; makes a new PSP display (sway/Hyprland/X11)
    pspdisp -i            # ...and expose PSP buttons as a gamepad
@@ -271,6 +270,5 @@ PSPdisp installed.
    pspdisp --kill        # stop the host cleanly
    pspdisp --help        # all options
 
-Re-flash the PSP later:  ./linux-host/install-psp.sh
-============================================================
+To re-flash the PSP later: ./linux-host/install-psp.sh
 EOF

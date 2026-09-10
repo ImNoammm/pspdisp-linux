@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — common types.
+  pspdisp-min: common types.
 
   Minimal USB-only rewrite of the PSPdisp homebrew. Same wire protocol as the
   original (see shared.h), so it talks to the unchanged linux host.

@@ -1,6 +1,6 @@
 /* PipeWire / xdg-desktop-portal ScreenCast capture backend.
 
-   For Wayland compositors that do NOT support wlr-screencopy — notably
+   For Wayland compositors that do NOT support wlr-screencopy, notably
    KDE/KWin and GNOME/Mutter. Uses the org.freedesktop.portal.ScreenCast portal
    (over D-Bus / GDBus) to pick a monitor, then reads frames from the PipeWire
    stream the portal hands back.
@@ -23,7 +23,7 @@
    xdg-desktop-portal-wlr. DMA-BUF readback works on Mesa (Intel/AMD). On the
    NVIDIA proprietary driver the producer only offers the implicit modifier and
    NVIDIA's EGL can't detile implicit-modifier dmabufs, so frames come out
-   garbled — a known NVIDIA/wlroots limitation, not specific to pspdisp. The
+   garbled, a known NVIDIA/wlroots limitation, not specific to pspdisp. The
    well-supported backends are wlroots (wlr-screencopy), X11 (XShm), USB and
    Wi-Fi; use those unless you're on KDE/GNOME Wayland with a Mesa GPU. */
 #include <stdio.h>
@@ -49,7 +49,7 @@
 
 static capture_backend backend;        /* defined at bottom; filled in p_init */
 
-/* ---- portal handshake (GDBus) ----------------------------------------- */
+/* portal handshake (GDBus) */
 static GDBusConnection *bus;
 static char *session_handle;
 static int   pw_fd = -1;
@@ -206,7 +206,7 @@ static void step_open_pw(void)
       G_VARIANT_TYPE("(h)"), G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, on_open_pw, NULL);
 }
 
-/* ---- PipeWire stream --------------------------------------------------- */
+/* PipeWire stream */
 static struct pw_thread_loop *pw_loop;
 static struct pw_context *pw_ctx;
 static struct pw_core *pw_core;
@@ -412,7 +412,7 @@ static void on_param_changed(void *ud, uint32_t id, const struct spa_pod *param)
     uint32_t fmt = info.info.raw.format;
     uint32_t drm = spa_to_drm(fmt);
     /* The modifier prop is an enum choice [default, m0, m1, ...]. Pick a REAL
-       (non-INVALID) modifier the GPU supports — importing the actual tiled
+       (non-INVALID) modifier the GPU supports, importing the actual tiled
        layout. Falling back to INVALID makes EGL read tiled memory as linear
        (garbled bands). Only use INVALID if no explicit modifier is supported. */
     uint64_t mod = DRM_FORMAT_MOD_INVALID;
@@ -582,7 +582,7 @@ static bool start_pipewire(void)
   return true;
 }
 
-/* ---- capture_backend interface ---------------------------------------- */
+/* capture_backend interface */
 static bool p_init(void)
 {
   bus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, NULL);
@@ -598,7 +598,7 @@ static bool p_init(void)
   if (!handshake_ok || pw_fd < 0) { fprintf(stderr, "portal: handshake failed\n"); return false; }
 
   if (!gbm_open() || !egl_setup())
-    fprintf(stderr, "portal: GPU/EGL init failed — DMA-BUF frames unavailable\n");
+    fprintf(stderr, "portal: GPU/EGL init failed: DMA-BUF frames unavailable\n");
 
   if (!start_pipewire()) { fprintf(stderr, "portal: PipeWire connect failed\n"); return false; }
   VLOG("portal: pipewire stream connecting, waiting for first frame...\n");
@@ -619,7 +619,7 @@ static bool p_init(void)
       "portal: connected to the screencast but no frame arrived.\n"
       "        The compositor is likely producing DMA-BUF buffers, which this\n"
       "        backend can't yet read (shm/MemPtr only). KDE/GNOME capture is\n"
-      "        experimental — see capture_portal.c. Other backends work.\n");
+      "        experimental, see capture_portal.c. Other backends work.\n");
     return false;
   }
   VLOG("portal: first frame %dx%d\n", f_w, f_h);

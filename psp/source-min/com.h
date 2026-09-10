@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — frame transport loop (subset of the original com.c).
+  pspdisp-min: frame transport loop (subset of the original com.c).
 
   Speaks the unchanged PSPdisp wire protocol (shared.h) over the USBHostFS bulk
   channel: read frame header + JPEG, reply with buttons/analog, decode, blit.

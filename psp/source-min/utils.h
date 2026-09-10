@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — module load helpers (subset of the original utils.c).
+  pspdisp-min: module load helpers (subset of the original utils.c).
 */
 #ifndef UTILS_H
 #define UTILS_H

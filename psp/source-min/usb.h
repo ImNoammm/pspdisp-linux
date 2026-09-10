@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — USB driver bring-up (subset of the original usb.c).
+  pspdisp-min: USB driver bring-up (subset of the original usb.c).
 
   Loads usbhostfs.prx and the USBHostFS bulk driver, the same transport the
   linux host's transport_usb.c speaks. Channel 4 (ASYNC_USER) carries frames.

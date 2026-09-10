@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# PSPdisp — copy the PSP homebrew to a USB-connected PSP, with verification.
+# PSPdisp: copy the PSP homebrew to a USB-connected PSP, with verification.
 #
 # Replaces the Windows "CopyToPsp" installer step. Copies the payload to the
 # PSP's PSP/GAME/PSPdisp/ and CHECKSUM-VERIFIES every file (byte-exact). On a
@@ -11,7 +11,7 @@
 #     PAYLOAD_DIR     default: ./psp-payload  (made by ../build-psp.sh)
 #     PSP_MOUNTPOINT  default: auto-detected (a mounted drive with a PSP/ dir)
 #
-# The PSP must be connected in USB **storage** mode (PSP menu: Settings → USB
+# The PSP must be connected in USB storage mode (PSP menu: Settings -> USB
 # Connection), not the PSPdisp app's USB mode.
 set -eu
 
@@ -21,9 +21,9 @@ DEST="${2:-}"
 say()  { printf '%s\n' "$*"; }
 die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
 
-# --- 1. locate the PSP ------------------------------------------------------
+# 1. locate the PSP
 # Identify the PSP by its USB identity (a Sony "PSP" Memory Stick), NOT by
-# "some mounted drive that happens to contain a PSP/ folder" — that loose match
+# "some mounted drive that happens to contain a PSP/ folder". That loose match
 # has flashed people's SD cards instead of the PSP. If the PSP is plugged in but
 # not mounted, mount it ourselves (and unmount on exit).
 PSP_DEV=""; WE_MOUNTED=""
@@ -58,7 +58,7 @@ if [ -z "$DEST" ]; then
   if [ -n "$PSP_DEV" ]; then
     DEST=$(lsblk -no MOUNTPOINT "$PSP_DEV" 2>/dev/null | grep -m1 .) || true
     if [ -z "$DEST" ]; then
-      say "PSP detected at $PSP_DEV but not mounted — mounting it ..."
+      say "PSP detected at $PSP_DEV but not mounted, mounting it ..."
       # Prefer udisksctl (rootless on a desktop). It fails on headless boxes with
       # no polkit agent, so fall back to a plain/sudo mount on a temp dir.
       if command -v udisksctl >/dev/null 2>&1; then
@@ -98,7 +98,7 @@ if [ -z "$PSP_DEV" ] && [ ! -d "$DEST/PSP" ]; then
   Pass the correct mountpoint explicitly if you're sure."
 fi
 
-# --- 2. check the payload ---------------------------------------------------
+# 2. check the payload
 [ -f "$PAYLOAD/EBOOT.PBP" ] || die "no EBOOT.PBP in '$PAYLOAD'.
   Build it first:  PSPDEV=/usr/local/pspdev ../build-psp.sh
   (or run the top-level ./install.sh --with-psp)"
@@ -128,7 +128,7 @@ copy_verified() {
   die "FAILED to copy $(basename "$src") intact after 3 tries. Use a better USB cable."
 }
 
-# --- 3. copy + verify -------------------------------------------------------
+# 3. copy + verify
 TARGET="$DEST/PSP/GAME/PSPdisp"
 say "Installing to: $TARGET"
 mkdir -p "$TARGET/graphics"

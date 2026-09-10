@@ -1,9 +1,9 @@
 /*
-  pspdisp-min — minimal USB-only PSPdisp homebrew.
+  pspdisp-min: minimal USB-only PSPdisp homebrew.
 
   Boots straight into USB display: max clock, GU + hardware JPEG up, load the
   USBHostFS bulk driver, then run the frame loop and auto-reconnect when the
-  cable drops. No on-PSP menu / WLAN / OSK / audio — the linux host drives
+  cable drops. No on-PSP menu / WLAN / OSK / audio, the linux host drives
   resolution, fps and quality. Wire-compatible with the unchanged host.
 */
 #include <pspkernel.h>
@@ -26,7 +26,7 @@ static volatile bool l_exit = false;
 volatile int g_quit = 0;          /* set by the menu Quit / prompt quit combo */
 
 /* Centered message on a black screen (pspDebugScreen is ~60 cols). l2 optional
-   (dimmer, drawn below) — pass NULL for a single line. */
+   (dimmer, drawn below), pass NULL for a single line. */
 static void screenMsg2(const char *l1, const char *l2)
 {
   int n1 = 0; while (l1[n1]) n1++;
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 
   displayInit();
   /* Debug overlay uses pspDebugScreen; setup=0 so it does NOT take over the
-     display (GU owns it) — we just point its text base at our draw buffer. */
+     display (GU owns it), we just point its text base at our draw buffer. */
   pspDebugScreenInitEx((void *)displayDrawAddr(), PSP_DISPLAY_PIXEL_FORMAT_8888, 0);
   displayClear(0xFF000000);
   displaySwap();

@@ -12,7 +12,7 @@ HERE=$(CDPATH= cd "$(dirname "$0")" && pwd)
 SRC="$HERE/psp/source"
 OUT="${1:-$HERE/linux-host/psp-payload}"
 
-# --- locate pspdev ----------------------------------------------------------
+# locate pspdev
 if [ -z "${PSPDEV:-}" ]; then
   for d in /usr/local/pspdev "$HOME/pspdev" /opt/pspdev; do
     [ -x "$d/bin/psp-gcc" ] && PSPDEV="$d" && break
@@ -27,7 +27,7 @@ export PSPSDK="$PSPDEV/psp/sdk"
 export PATH="$PSPDEV/bin:$PSPDEV/psp/bin:$PATH"
 echo "Using pspdev at $PSPDEV ($(psp-gcc --version | head -1))"
 
-# --- build ------------------------------------------------------------------
+# build
 echo "Building EBOOT.PBP ..."
 ( cd "$SRC" && make )
 echo "Building usbhostfs.prx ..."
@@ -35,7 +35,7 @@ echo "Building usbhostfs.prx ..."
 echo "Building kernel.prx ..."
 ( cd "$SRC/kernel" && make )
 
-# --- assemble payload -------------------------------------------------------
+# assemble payload
 mkdir -p "$OUT/graphics"
 cp "$SRC/EBOOT.PBP"                "$OUT/"
 cp "$SRC/usbhostfs/usbhostfs.prx" "$OUT/"

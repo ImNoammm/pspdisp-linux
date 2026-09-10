@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — frame transport loop.
+  pspdisp-min: frame transport loop.
 */
 #include <pspkernel.h>
 #include <pspctrl.h>

@@ -45,7 +45,7 @@ install: pspdisp
 	@echo "now: sudo udevadm control --reload && sudo udevadm trigger"
 
 # per-user install (no root): ~/.local/bin. The udev rule still needs root for
-# USB/uinput access without sudo — install it separately with 'make install-udev'.
+# USB/uinput access without sudo; install it separately with 'make install-udev'.
 install-user: pspdisp
 	install -Dm755 pspdisp $(HOME)/.local/bin/pspdisp
 	@echo "installed: $(HOME)/.local/bin/pspdisp"

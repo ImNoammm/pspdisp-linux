@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — hardware MJPEG decode (subset of the original compress.c).
+  pspdisp-min: hardware MJPEG decode (subset of the original compress.c).
 
   Uses the PSP Media Engine JPEG decoder (sceJpeg*). The host only ever sends
   baseline JPEG, so the libjpeg/PNG software fallbacks of the original are gone.

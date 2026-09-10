@@ -1,5 +1,5 @@
 /*
-  pspdisp-min — GU display (subset of the original graphic.c).
+  pspdisp-min: GU display (subset of the original graphic.c).
 
   Hardware-accelerated blit of a decoded 480x272 RGBA frame to the screen via
   sceGu, with optional 90/180/270 rotation. Double-buffered.

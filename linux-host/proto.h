@@ -1,4 +1,4 @@
-/* PSPdisp wire protocol — mirrors psp/source/shared.h. Little-endian. */
+/* PSPdisp wire protocol: mirrors psp/source/shared.h. Little-endian. */
 #ifndef PSPDISP_PROTO_H
 #define PSPDISP_PROTO_H
 #include <stdint.h>

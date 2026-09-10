@@ -1,7 +1,7 @@
 /* Auto-managed virtual display for wlroots compositors.
 
    When pspdisp runs with no explicit -o output, it creates a headless output on
-   start and removes it on exit — so the PSP shows up as a real extra monitor
+   start and removes it on exit, so the PSP shows up as a real extra monitor
    that appears when you start pspdisp and disappears when you stop it.
 
    Supported compositors:
@@ -13,7 +13,7 @@
    The X11 path is driver-agnostic: it needs no VirtualHeads support (which
    amdgpu and the NVIDIA DDX lack, and many modesetting builds ship without), so
    it works on AMD/Intel/NVIDIA alike. It only needs the X screen's `Virtual`
-   size to be larger than the desktop — the installer drops an xorg.conf snippet
+   size to be larger than the desktop. The installer drops an xorg.conf snippet
    that sets `Virtual 5120 2160` so there's always headroom for the strip.
 
    On anything else display_auto_create() returns NULL and the caller falls
@@ -96,7 +96,7 @@ const char *display_auto_create(int w, int h)
        output; `--setmonitor` makes the WM treat it as a real head. We print
        "xoff curW curH" so the caller sets the capture region and we can restore
        the framebuffer on exit. Falls back (exit 1) if the screen can't grow
-       (Virtual too small) — caller then mirrors instead.
+       (Virtual too small), caller then mirrors instead.
        NOTE: every side-effect xrandr must suppress BOTH stdout and stderr
        (`--delmonitor` prints "No monitor named ..." to stdout), so the only
        thing on stdout is the final printf the caller parses. */

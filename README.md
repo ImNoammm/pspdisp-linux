@@ -1,3 +1,7 @@
+> **Disclaimer:** Claude was used to assist with small portions of this project, including parts of the README(I ain't learning markdown argue with a wall), the GNOME/KDE ports, portions of the Windows driver translation, and a few other minor fixes. All AI-assisted contributions were reviewed and verified by a human.
+>
+> **Enjoy!**
+
 # PSPdisp for Linux
 
 Use a PSP as a second monitor (and a gamepad) for a Linux PC, over USB or Wi-Fi.
